@@ -256,6 +256,7 @@ if (react_alumnos){
 
     createRoot(react_alumnos).render(<Alumnos alumnos={alumnos} />);
 }
+
 OJO! comillas dobles-sencillas para interpretar el json correctamente
 ```
 
