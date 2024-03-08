@@ -232,6 +232,32 @@ incorporamos en tailwind.config
 './resources/js/**/*.jsx' ,
     ]
 ```
+si queremos pasar datos a react desde el back - laravel ,pasamos los datos a la vista desde el controlador(MainController) --por ejemplo
+```
+ public function __invoke(Request $request)
+    {
+        $n=rand(1,100);
+        $alumnos=Alumno::all();
+        return view('saludo',compact('n','alumnos'));
+    }
+```
+y en la vista incorporamos las datos como atributos..que luego recuperaremos 
+
+en la vista
+```
+    <div id="react-saludo" ></div>
+    <div id="react-numero" numero={{$n}}></div>
+    <div id="react-alumnos" alumnos='@json($alumnos)'></div>
+```
+los recuperamos en el componente de la siguiente manera:
+```
+if (react_alumnos){
+    const alumnos=JSON.parse(react_alumnos.getAttribute('alumnos'));
+
+    createRoot(react_alumnos).render(<Alumnos alumnos={alumnos} />);
+}
+OJO! comillas dobles-sencillas para interpretar el json correctamente
+```
 
 
 
