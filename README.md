@@ -13,12 +13,12 @@ Esto crea los siguientes elementos:
 * controlador (los métodos que voy a ejecutar ante solicitudes del cliente) 
 * modelo (clase para ineteractuar con una tabla de la bd y hacer acciones típicas como insertar, borrar, consultar, actualizar)
 * request (autoriza, valida los datos del formulario)
-* policy (ni idea, suena a políticas que definirás acceso)
-* rutas (tengo que crearlas y dirán que recursos ofrece mi aplicación)
+* policy (políticas que definirás accesos)
+* rutas (tengo que crearlas y dirán que recursos ofrece mi aplicación,habitualmennte retornan vistas a las que pasamos variable,o controladores que procesan/obtienen  los datos y que se incorpran a alguna vista a mostrar)
 
 ## Ajusto los valores por defecto
 
-Cómo el modelo se llama Profesor y la tabla queiro que se llame prefores y no profesors, tengo que indicarlo:
+Cómo el modelo se llama Profesor y la tabla quiero que se llame profesores y no profesors, tengo que indicarlo:
 
 ### creando un crud de profesores
 ## creo ecosistema
@@ -28,7 +28,7 @@ Cómo el modelo se llama Profesor y la tabla queiro que se llame prefores y no p
 ``` 
 con ello creamos el modelo,el controlador,el seeder, el factory,la migration,y el Policy,el StoreRequest y el UpdateRequest asociados al modelo.Quedando pendiente solo las rutas,que veremos posteriormente como crearlas para acer un crud.
 
-levantamos contenedores con el servidor de base de datos y el gestor phpmyadmin
+levantamos contenedores con el servidor de base de datos y el gestor phpmyadmin para comprobar qur se han creado y poblado correctamente
 
 ```
 docker compose up -d --build
@@ -36,20 +36,13 @@ docker compose up -d --build
 
 Bases de datos
 - 
- -diseñamos la tabla en
+ -diseñamos la tabla en la migracion indicando campos y caracteristica( tipo de dato , unique(),notnull()....)
 
  poblamos la tabla y realizamos las migraciones con 
  ```
  php migrate:migrate --seed
  ```
- ### Rutas
-
- fallback->nos permite ejecutar algo si al ruta no existe
-```
-Route::fallback(function(){})
-Route::resouces('profesores',Alumnno::class)
-```
-Routes ::resources crea las rutas necesarias para hacer el crud(eliminar ,crear y almacenar en base de datos,editar un elemento base de datos)
+ 
 
 ### Poblar la base de datos 
 
@@ -126,6 +119,84 @@ public function run(): void
     }
 ```
 
+### Rutas
+
+ fallback->nos permite ejecutar algo si al ruta no existe
+```
+Route::fallback(function(){})
+Route::resouces('profesores',Alumnno::class)
+```
+Routes ::resources crea las rutas necesarias para hacer el crud(eliminar ,crear y almacenar en base de datos,editar un elemento base de datos)
+blos metodos del controlador para ello son : index, create, store, show, edit, update y destroy.
+index->nos muestra los registros de la tabla
+create->nos muestra una vista con los campor a cumplinentar para crear un registro
+store->recibe los campos que vamos a enviar por post para guardarlos en la BD
+show->muestra los detalles de un solo registro
+edit->formulario para editar un registro
+update->actualizar los cambios realizados en el formulario edit
+destroy->eliminar un registro de la BD
+Para trabajar con las rutas se utiliza el comando php artisan route:list --path="profesores" que nos muestra las rutas de profesores.
+podemos nombrarlas con ->name('nombre de la ruta'.) y usarlas con el helper route('nombre de la ruta')
+las tutas creadas con resource de profesores son:
+
+  GET|HEAD        profesores ............ profesores.index › ProfesorController@index  
+  POST            profesores ............ profesores.store › ProfesorController@store  
+  GET|HEAD        profesores/create ..... profesores.create › profesorController@create  
+  GET|HEAD        profesores/{profesor} ..profesores.show › ProfesorController@show  
+  PUT|PATCH       profesores/{profesor} ..profesores.update › ProfesorController@update  
+  DELETE          profesores/{profesor} ..profesores.destroy › ProfesorController@destroy  
+  GET|HEAD        profesores/{profesor}/edit .profesores.edit › ProfesorController@edit 
+
+### Controlador
+En el controlador los metodos quedarian(ya con paginacion incluidad):
+
+ 1-modificamos el metodos index() para que recupere la pagina en la que estamos
+
+
+$Profesores = Profesor::paginate(5);
+
+$page = Request::get('page')??1;
+
+return view("profesores.listado" , compact("profesores","page"));
+
+2-añadimos al final de la vista 
+```
+{{ $profesores->links() }}
+```
+3-hay que publicar las vistas con
+```
+php artisan vendor:publish --tag=laravel-pagination
+```
+con lo que se crean unas vistas utilizables en views/vendor/pagination
+que por defecto coge tailwind.blade.php ,si bien se puede coger cualquier otra  e incluso modificarlas
+
+4-Para editar el alumno en la vista alumno.edit le inyectamos la pagina para poder pasarla despues
+```
+<a href="{{route("profesor.edit" ,[$profesor->id,'page'=>$page])}}">
+[$profesor->id,'page'=>$page] puede sustituirse por compact('profesor','page’)
+```
+
+5-En el metodo edit recuperamos la pagina que hemos recibido por get para poder pasarsela al metodo update
+```
+$page = Request::get("page");
+return view ("profesores.edit" , compact("profesor","page"));
+```
+En el metodo update recuperamos la pagina,pasada por get para podersela pasar a la ruta profesores con el listado paginado
+```
+$page =$request->input('page');
+$datos_nuevos = $request->input();
+$profesor->updateOrFail ($datos_nuevos );
+return redirect ("profesores?page= $page");
+```
+6- Para la ruta profesor.destroy el metodo destry del controlador quedaría:
+```
+public function destroy(Alumno $alumno)
+    {
+        $profesor->delete();
+        return back();
+
+    }
+```
 
 ### CSS
 Al instalar breeze con
@@ -144,13 +215,15 @@ npm install -D tailwindcss postcss autoprefixerc
 instalamos daisy ui para tener componentes desarrollados en tailwind
 ```
 npm i -D daisyui@latest
+
+en tailwind.config
 plugins: [forms,require("daisyui")], en tailwind.config
 ```
 para paginar y que cargue mi propio css desde vendor/pagination aplico
 ```
 php artisan vendor:publish --tag=laravel-pagination
 ```
-y modifico alli el css.Por defecto coge tailwind.blade.css.pudiendo copiar alli otras alternativas de otras plantillas de la misma carpeta
+y modifico alli el css.Por defecto coge la plantilla  tailwind.blade.css pudiendo elegir otras alternativas de otras plantillas de la misma carpeta
 
 ### JS
 
@@ -160,12 +233,36 @@ lo instalamos
 npm install sweetalert2
 
 ```
+y utilizarlo dentro de un script en la pagina:
+```
+ function confirmDelete(event, button) {
+            event.preventDefault();
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: "No podrás revertir esto!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, borrarlo!'
+            }).then((result) => {
+                    console.log("Resultado " + result);
+                    if (result.isConfirmed)
+                        button.closest('form').submit();
+                }
+
+            )
+
+        }
+```
+y ejecutamos la funcion al hacer  click en el boton guardar o eliminar
+
+
 ### REACT
 en caso de trabajar con REACT TENEMOS QUE :
 
 ```
-EL VITE.CONFIG deberia quedar asi
-
+EL VITE.CONFIG deberia quedar asi:
 
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
@@ -183,6 +280,8 @@ refresh: true,
 }),
 ],
 });
+
+le hemos añadido el plugin de react al empaquetador vite
 ```
 
 instalamos react-dom y react-dom
@@ -193,10 +292,11 @@ npm install --save-dev @vitejs/plugin-react
 ```
 En el layout base(componente layouts.layout) incorporamos los js  con :
 ```
-@vite(["resources/css/app.css","resources/js/app.jsx"])  
 @viteReactRefresh
+@vite(["resources/css/app.css","resources/js/app.jsx"])  
+
 ```
-INCORPORAMOS los bloques de react en sus puntos en App.jsx
+INSERTAMOS los bloques de react en sus puntos en App.jsx
 ```
 import './bootstrap';
 // import 'Code.jsx';
@@ -206,19 +306,28 @@ import {createRoot} from "react-dom/client";
 
 import Saludo from "./Pages/Saludo.jsx";
 import Numero from "./Pages/Numero.jsx";
+import Alumnos from "./Pages/Alumnos.jsx";
 
 const react_numero = document.getElementById("react-numero");
 const react_saludo = document.getElementById("react-saludo");
+const react_alumnos = document.getElementById("react-alumnos");
 
-if (react_numero)
-createRoot(react_numero).render(<Numero />);
+if (react_numero){
+    const numero= react_numero.getAttribute('numero');
+    createRoot(react_numero).render(<Numero numero={numero}/>);
+}
 
-if (react_saludo)
-createRoot(react_saludo).render(<Saludo />);
+if (react_saludo){
+    createRoot(react_saludo).render(<Saludo />);
+}
+if (react_alumnos){
+    const alumnos=JSON.parse(react_alumnos.getAttribute('alumnos'));
+
+    createRoot(react_alumnos).render(<Alumnos alumnos={alumnos} />);
 ```
 y para que tailwind aplique estilos:
 ```
-para que tailwind aplique estilos en los js
+para que tailwind aplique estilos en los jsx
 
 incorporamos en tailwind.config
 
@@ -229,10 +338,10 @@ incorporamos en tailwind.config
 './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
 './storage/framework/views/*.php' ,
 './resources/views/**/*.blade.php' ,
-'./resources/js/**/*.jsx' ,
+'./resources/js/**/*.jsx' ,             <-----se añade>
     ]
 ```
-si queremos pasar datos a react desde el back - laravel ,pasamos los datos a la vista desde el controlador(MainController) --por ejemplo
+si queremos pasar datos a react desde el back - laravel ,pasamos los datos a la vista desde el controlador(MainController) --por ejemplo--el metodo inoque es un metodo magico que se ejecuta cuando no se invoca un metodo especifico de la clase
 ```
  public function __invoke(Request $request)
     {
@@ -257,46 +366,11 @@ if (react_alumnos){
     createRoot(react_alumnos).render(<Alumnos alumnos={alumnos} />);
 }
 
-OJO! comillas dobles-sencillas para interpretar el json correctamente
+OJO! comillas sencillas para interpretar el json correctamente ya que este ya viene con comillas dobles
 ```
 
 
 
 ###  Como se realiza la paginacion en Profesores
 
-1-modificamos el metodos index() para que recupere la pagina en la que estamos
-
-$Profesores = Profesor::paginate(5);
-
-$page = Request::get('page')??1;
-
-return view("profesores.listado" , compact("profesores","page"));
-
-2-añadimos al final de la vista 
-```
-{{ $profesores->links() }}
-```
-3-hay que publicar las vistas con
-```
-php artisan vendor:publish --tag=laravel-pagination
-```
-con lo que se crean unas vistas utilizables en views/vendor/pagination
-que por defecto coge tailwind.blade.php ,si bien se puede coger cualquier otra  e incluso modificarlas
-
-4-Para editar el alumno en la vista alumno.edit le inyectamos la pagina para poder pasarla despues
-```
-<a href="{{route("profesor.edit" ,[$profesor->id,'page'=>$page])}}">
-```
-
-5-En el metodo edit recuperamos la pagina que hemos recibido por get para poder pasarsela al metodo update
-```
-$page = Request::get("page");
-return view ("profesores.edit" , compact("profesor","page"));
-```
-En el metodo update recuperamos la pagina,pasada por get para podersela pasar a la ruta profesores con el listado paginado
-```
-$page =$request->input('page');
-$datos_nuevos = $request->input();
-$profesor->updateOrFail ($datos_nuevos );
-return redirect ("profesores?page= $page");
-```
+ver ejemplo en rutas
