@@ -51,6 +51,82 @@ Route::resouces('profesores',Alumnno::class)
 ```
 Routes ::resources crea las rutas necesarias para hacer el crud(eliminar ,crear y almacenar en base de datos,editar un elemento base de datos)
 
+### Poblar la base de datos 
+
+en la migracion mofdificamos la funcion up() poniendo lklos campos de la tabla 
+```
+public function up(): void
+    {
+        Schema::create('profesores', function (Blueprint $table) {
+            $table->id();
+            $table->string("nombre");
+            $table->string("apellidos");
+            $table->string("email")->unique();
+            $table->string("dni")->unique();
+            $table->string("departamento"); //['informática', "comercio", "imagen"]
+            $table->timestamps();
+        });
+    }
+```
+con ello generamos la estructura de la tabla profesores
+
+en la clase ProfesorFactory ponemos como se generarqan los datos
+o bien a traves de Faker,como en los siguientes campos:
+
+```
+public function definition(): array
+    {
+        $departamentos = ['Infomática', "Comercio", "Imagen"];
+        return [
+            "nombre" => fake()->name(),
+            "dni" => $this->getDni(),
+            "apellidos" => fake()->lastName(),
+            "email" => fake()->unique()->safeEmail(),
+            "departamento" => fake()->randomElement($departamentos),
+
+
+        ];
+    }
+
+```
+
+    o bien generando una funcion especifica para algun campo:
+```
+    "dni" => $this->getDni(),
+```
+
+usando una funcion a medida:
+```
+     private function getDni(): string
+    {
+
+        $letras= "TRWAGMYFPDXBNJZSQVHLCKE";
+        $numero = fake()->randomNumber(8);
+        $letra = $letras[$numero%23];
+        $dni = "$numero-$letra";
+        return $dni;
+    }
+```
+para poblar la base de datos usamos las clases seeder ,usualmente la Database seeder que lanza todas las demas
+
+```
+ public function run(): void
+    {
+        $this->call([
+            AlumnoSeeder::class,
+            ProfesorSeeder::class
+        ]);
+    }
+```
+En el ProfesorSeeder tenemos el poblado de la base de datos
+```
+public function run(): void
+    {
+        Profesor::factory()->count(100)->create();
+    }
+```
+
+
 ### CSS
 Al instalar breeze con
 
@@ -82,7 +158,81 @@ podemos cargar sweet alert para que aparezcan y desaparezcan
 lo instalamos
 ```
 npm install sweetalert2
+
 ```
+### REACT
+en caso de trabajar con REACT TENEMOS QUE :
+
+```
+EL VITE.CONFIG deberia quedar asi
+
+
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+plugins: [
+react(),
+laravel({
+input: [
+'resources/css/app.css',
+'resources/js/app.js',
+],
+refresh: true,
+}),
+],
+});
+```
+
+instalamos react-dom y react-dom
+```
+
+npm install --save-dev @vitejs/plugin-react
+ npm install react@latest react-dom@latest
+```
+En el layout base(componente layouts.layout) incorporamos los js  con :
+```
+@vite(["resources/css/app.css","resources/js/app.jsx"])  
+@viteReactRefresh
+```
+INCORPORAMOS los bloques de react en sus puntos en App.jsx
+```
+import './bootstrap';
+// import 'Code.jsx';
+
+import React from "react";
+import {createRoot} from "react-dom/client";
+
+import Saludo from "./Pages/Saludo.jsx";
+import Numero from "./Pages/Numero.jsx";
+
+const react_numero = document.getElementById("react-numero");
+const react_saludo = document.getElementById("react-saludo");
+
+if (react_numero)
+createRoot(react_numero).render(<Numero />);
+
+if (react_saludo)
+createRoot(react_saludo).render(<Saludo />);
+```
+y para que tailwind aplique estilos:
+```
+para que tailwind aplique estilos en los js
+
+incorporamos en tailwind.config
+
+	content: [
+'./vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
+'./storage/framework/views/*.php',
+'./resources/views/**/*.blade.php',
+'./vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
+'./storage/framework/views/*.php' ,
+'./resources/views/**/*.blade.php' ,
+'./resources/js/**/*.jsx' ,
+    ]
+```
+
 
 
 ###  Como se realiza la paginacion en Profesores
